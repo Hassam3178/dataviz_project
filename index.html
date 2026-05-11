@@ -14,15 +14,15 @@
 
   <style>
     :root {
-      --bg-base: #0b0f19;
-      --bg-surface: #131b2e;
+      --bg-base: #07090e;
+      --bg-surface: #101623;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --accent-blue: #38bdf8;
       --accent-red: #fb7185;
       --accent-gold: #f59e0b;
       --border-color: rgba(255, 255, 255, 0.15);
-      --card-glass: rgba(15, 23, 42, 0.85);
+      --card-glass: rgba(13, 20, 36, 0.85);
     }
 
     * {
@@ -120,7 +120,7 @@
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
       border-left: 6px solid #475569;
       transition: all 0.4s ease;
-      opacity: 0.5;
+      opacity: 0.4;
     }
 
     .step.is-active .step-card {
@@ -178,12 +178,12 @@
     /* Interactive Chart Frame */
     .visual-frame {
       flex: 1;
-      background: #070a10;
+      background: #04060a;
       border: 1px solid var(--border-color);
       border-radius: 16px;
       position: relative;
       overflow: hidden;
-      box-shadow: inset 0 0 80px rgba(0,0,0,0.8);
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.9);
     }
 
     /* Visible Interactive Filters */
@@ -200,7 +200,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.4s ease;
-      background: rgba(11, 15, 25, 0.9);
+      background: rgba(10, 14, 23, 0.95);
       padding: 10px;
       border-radius: 12px;
       border: 1px solid var(--border-color);
@@ -250,7 +250,7 @@
     /* Clean Professional Footer */
     footer {
       padding: 4rem 5%;
-      background: #05070c;
+      background: #030508;
       border-top: 1px solid var(--border-color);
       text-align: center;
       color: var(--text-muted);
@@ -374,10 +374,10 @@
       { Name: "Marathon", Price_USD: "39.99", Review_Score_Pct: "90", Estimated_Owners: "730800", All_Tags: "Multiplayer;Shooter;Sci-fi" }
     ];
 
-    // Procedurally flesh out full representative data landscape
+    // Fleshing out background distribution safely
     for (let i = 0; i < 350; i++) {
       const isMulti = Math.random() > 0.55;
-      const score = Math.min(100, Math.max(30, Math.floor((isMulti ? 76 : 79) + (Math.random() * 30 - 15))));
+      const score = Math.min(100, Math.max(0, Math.floor((isMulti ? 76 : 79) + (Math.random() * 30 - 15))));
       const prices = [0, 9.99, 14.99, 19.99, 29.99, 39.99, 49.99, 59.99, 69.99];
       const price = prices[Math.floor(Math.random() * prices.length)];
       const owners = Math.floor(Math.random() * 1500000) + 20000;
@@ -392,30 +392,47 @@
 
     let masterData = [];
 
-    /* --- INITIALIZE D3 CANVAS --- */
+    /* --- ROCK-SOLID D3 CANVAS SETUP --- */
     const container = document.getElementById("visual-frame");
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 500;
-    const margin = { top: 60, right: 40, bottom: 60, left: 60 };
+    
+    // Generous bounding margins
+    const margin = { top: 60, right: 50, bottom: 60, left: 70 };
 
     const svg = d3.select("#visual-frame")
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%")
-      .attr("viewBox", `0 0 ${width} ${height}`);
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     const tooltip = d3.select("#tooltip");
 
-    const xScale = d3.scaleLinear().domain([-3, 75]).range([margin.left, width - margin.right]);
-    const yScale = d3.scaleLinear().domain([25, 105]).range([height - margin.bottom, margin.top]);
-    const rScale = d3.scaleSqrt().domain([20000, 26000000]).range([4, 30]);
+    // CRITICAL FIX: Math padding guaranteeing NO dot bleeds outside the axes.
+    // By keeping the output range strictly 35 pixels inside the rendering lines,
+    // a dot with a max 30px radius will never cross or touch the axis boundaries!
+    const xScale = d3.scaleLinear()
+      .domain([0, 75])
+      .range([margin.left + 35, width - margin.right - 35]);
 
-    // Build Padded Gridlines & Axes
-    const axesGroup = svg.append("g").attr("opacity", 0);
+    const yScale = d3.scaleLinear()
+      .domain([0, 100])
+      .range([height - margin.bottom - 35, margin.top + 35]);
 
+    const rScale = d3.scaleSqrt()
+      .domain([20000, 26000000])
+      .range([4, 30]);
+
+    /* --- STABLE PERMANENT AXES & GRIDLINES --- */
+    // Axes are drawn along the margins, while dots live safely inside the inner padded zone.
+    const axesGroup = svg.append("g");
+
+    // X Grid & Axis (Drawn securely at height - margin.bottom)
+    const xAxisScale = d3.scaleLinear().domain([0, 75]).range([margin.left, width - margin.right]);
     axesGroup.append("g")
       .attr("transform", `translate(0, ${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale).tickSize(-height + margin.top + margin.bottom).tickFormat(d => `$${d}`))
+      .call(d3.axisBottom(xAxisScale).tickSize(-height + margin.top + margin.bottom).tickFormat(d => `$${d}`))
       .selectAll("line").attr("stroke", "rgba(255,255,255,0.05)").attr("stroke-dasharray", "3 3");
       
     axesGroup.selectAll("path.domain").attr("stroke", "#334155");
@@ -429,9 +446,11 @@
       .style("font-weight", "600")
       .text("Game Pricing (USD)");
 
+    // Y Grid & Axis (Drawn securely at margin.left)
+    const yAxisScale = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
     axesGroup.append("g")
       .attr("transform", `translate(${margin.left}, 0)`)
-      .call(d3.axisLeft(yScale).tickSize(-width + margin.left + margin.right).tickFormat(d => `${d}%`))
+      .call(d3.axisLeft(yAxisScale).tickSize(-width + margin.left + margin.right).tickFormat(d => `${d}%`))
       .selectAll("line").attr("stroke", "rgba(255,255,255,0.05)").attr("stroke-dasharray", "3 3");
 
     axesGroup.selectAll("path.domain").attr("stroke", "#334155");
@@ -446,14 +465,15 @@
       .style("font-weight", "600")
       .text("Review Feedback Percentage");
 
+    // Group for all data points
     const dotsGroup = svg.append("g");
 
-    // Clear Story Focus Elements
+    // Story Focus Annotation Groups
     const focusGroup = svg.append("g");
     const focusGlow = focusGroup.append("circle").attr("r", 0).attr("fill", "none").attr("stroke-width", 2);
     const focusCircle = focusGroup.append("circle").attr("r", 0).attr("stroke", "#fff").attr("stroke-width", 3);
-    const focusTitle = focusGroup.append("text").attr("text-anchor", "middle").attr("fill", "#fff").style("font-family", "Space Grotesk").style("font-size", "20px").style("opacity", 0);
-    const focusBadge = focusGroup.append("text").attr("text-anchor", "middle").attr("fill", "#fff").style("font-family", "Space Grotesk").style("font-size", "28px").style("font-weight", "bold").style("opacity", 0);
+    const focusTitle = focusGroup.append("text").attr("text-anchor", "middle").attr("fill", "#fff").style("font-family", "Space Grotesk").style("font-size", "18px").style("opacity", 0);
+    const focusBadge = focusGroup.append("text").attr("text-anchor", "middle").attr("fill", "#fff").style("font-family", "Space Grotesk").style("font-size", "26px").style("font-weight", "bold").style("opacity", 0);
 
     /* --- LIVE DASHBOARD METRICS --- */
     function updateMetrics(dataset) {
@@ -466,7 +486,6 @@
       d3.select("#stat-score").text(`${Math.round(avgScore)}%`);
       d3.select("#stat-price").text(`$${avgPrice.toFixed(2)}`);
       
-      // Shorten extremely large player numbers cleanly
       let playerStr = totalPlayers.toLocaleString();
       if (totalPlayers > 1000000) playerStr = (totalPlayers / 1000000).toFixed(1) + "M";
       d3.select("#stat-players").text(playerStr);
@@ -486,7 +505,7 @@
 
       circles.transition().duration(400)
         .attr("opacity", d => {
-          if (filter === "all") return d.owners > 500000 ? 0.85 : 0.4;
+          if (filter === "all") return d.owners > 500000 ? 0.85 : 0.3;
           const match = (filter === "single" && !d.isMulti) || 
                         (filter === "multi" && d.isMulti) || 
                         (filter === "budget" && d.price < 20) || 
@@ -511,7 +530,7 @@
         score: parseInt(d.Review_Score_Pct) || 0,
         owners: parseInt(d.Estimated_Owners) || 0,
         isMulti: (d.All_Tags || "").toLowerCase().includes("multiplayer") || (d.All_Tags || "").toLowerCase().includes("co-op")
-      })).filter(d => d.score > 0);
+      }));
       
       if (masterData.length < 50) throw new Error("CSV dataset insufficient.");
       initVisuals();
@@ -531,12 +550,12 @@
         .data(masterData, d => d.name)
         .enter()
         .append("circle")
-        .attr("cx", d => xScale(d.price))
-        .attr("cy", d => yScale(d.score))
+        .attr("cx", d => xScale(Math.min(75, Math.max(0, d.price)))) // Safely bounded
+        .attr("cy", d => yScale(Math.min(100, Math.max(0, d.score)))) // Safely bounded
         .attr("r", d => rScale(d.owners))
         .attr("fill", d => d.isMulti ? "#fb7185" : "#38bdf8")
         .attr("opacity", 0)
-        .attr("stroke", "#070a10")
+        .attr("stroke", "#04060a")
         .attr("stroke-width", 1.5)
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
@@ -553,10 +572,7 @@
           const rect = container.getBoundingClientRect();
           let left = event.clientX - rect.left + 15;
           let top = event.clientY - rect.top - 30;
-          
-          // Keep tooltip safely inside frame padding
           if (left + 240 > width) left = width - 250;
-          
           tooltip.style("left", left + "px").style("top", top + "px");
         })
         .on("mousemove", function(event) {
@@ -567,7 +583,7 @@
           tooltip.style("left", left + "px").style("top", top + "px");
         })
         .on("mouseout", function() {
-          d3.select(this).attr("stroke", "#070a10").attr("stroke-width", 1.5);
+          d3.select(this).attr("stroke", "#04060a").attr("stroke-width", 1.5);
           tooltip.transition().duration(200).style("opacity", 0);
         });
 
@@ -602,57 +618,65 @@
 
         const circles = dotsGroup.selectAll("circle");
 
+        // Use exact mapped coordinates to ensure smooth, visually honest story highlights
+        const targetBfX = xScale(69.99);
+        const targetBfY = yScale(45);
+        const targetRepoX = xScale(6.99);
+        const targetRepoY = yScale(95);
+
         if (step === 0) {
-          axesGroup.transition().duration(400).attr("opacity", 0);
           circles.transition().duration(400).attr("opacity", 0);
           
           focusCircle.transition().duration(600)
-            .attr("cx", width / 2)
-            .attr("cy", height / 2)
-            .attr("r", 95)
+            .attr("cx", targetBfX)
+            .attr("cy", targetBfY)
+            .attr("r", 75)
             .attr("stroke", "#fb7185")
-            .attr("fill", "rgba(251, 113, 133, 0.1)");
+            .attr("fill", "rgba(251, 113, 133, 0.15)");
 
           focusGlow.transition().duration(600)
-            .attr("cx", width / 2)
-            .attr("cy", height / 2)
-            .attr("r", 110)
-            .attr("stroke", "rgba(251, 113, 133, 0.4)");
+            .attr("cx", targetBfX)
+            .attr("cy", targetBfY)
+            .attr("r", 90)
+            .attr("stroke", "rgba(251, 113, 133, 0.5)");
 
           focusTitle.transition().duration(400).style("opacity", 1)
-            .attr("y", height / 2 - 125)
-            .text("Battlefield™ 6 ($69.99 | 7.8M Players)");
+            .attr("x", targetBfX)
+            .attr("y", targetBfY - 105)
+            .text("Battlefield™ 6 ($69.99)");
 
           focusBadge.transition().delay(200).duration(400).style("opacity", 1)
-            .attr("y", height / 2 + 10)
+            .attr("x", targetBfX)
+            .attr("y", targetBfY + 5)
             .attr("fill", "#fb7185")
             .text("💥 45% Score");
 
           updateMetrics([{ price: 69.99, score: 45, owners: 7882470 }]);
 
         } else if (step === 1) {
-          axesGroup.transition().duration(400).attr("opacity", 0);
           circles.transition().duration(400).attr("opacity", 0);
 
           focusCircle.transition().duration(600)
-            .attr("cx", width / 2)
-            .attr("cy", height / 2)
-            .attr("r", 85)
+            .attr("cx", targetRepoX)
+            .attr("cy", targetRepoY)
+            .attr("r", 65)
             .attr("stroke", "#f59e0b")
-            .attr("fill", "rgba(245, 158, 11, 0.1)");
+            .attr("fill", "rgba(245, 158, 11, 0.15)");
 
           focusGlow.transition().duration(600)
-            .attr("cx", width / 2)
-            .attr("cy", height / 2)
-            .attr("r", 100)
-            .attr("stroke", "rgba(245, 158, 11, 0.4)");
+            .attr("cx", targetRepoX)
+            .attr("cy", targetRepoY)
+            .attr("r", 80)
+            .attr("stroke", "rgba(245, 158, 11, 0.5)");
 
           focusTitle.transition().duration(400).style("opacity", 1)
-            .attr("y", height / 2 - 115)
-            .text("R.E.P.O. ($6.99 | 8.8M Players)");
+            .attr("x", targetRepoX + 20)
+            .attr("y", targetRepoY - 90)
+            .text("R.E.P.O. ($6.99)");
 
           focusBadge.transition().duration(400).style("opacity", 1)
-            .attr("y", height / 2 + 10)
+            .attr("x", targetRepoX + 20)
+            .attr("y", targetRepoY + 5)
             .attr("fill", "#f59e0b")
             .text("⭐ 95% Acclaim");
 
@@ -664,8 +688,6 @@
           focusTitle.transition().duration(150).style("opacity", 0);
           focusBadge.transition().duration(150).style("opacity", 0);
 
-          axesGroup.transition().duration(600).attr("opacity", 1);
-
           circles.transition().duration(600)
             .attr("opacity", d => d.isMulti ? 0.85 : 0.15)
             .attr("r", d => rScale(d.owners));
@@ -673,7 +695,6 @@
           updateMetrics(masterData);
 
         } else if (step === 3) {
-          axesGroup.transition().duration(400).attr("opacity", 1);
           document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
           document.querySelector('[data-filter="all"]').classList.add("active");
           renderLandscape("all");
